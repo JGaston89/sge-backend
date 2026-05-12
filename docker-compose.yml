@@ -1,0 +1,80 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sge_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sge_db
+      POSTGRES_USER: sge_user
+      POSTGRES_PASSWORD: sge_local_pass
+    ports:
+      - '5432:5432'
+    volumes:
+      - sge_postgres_data:/var/lib/postgresql/data
+      - ./src/database/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sge_user -d sge_db']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: sge_redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - '6379:6379'
+    volumes:
+      - sge_redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: sge_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: sge_admin
+      MINIO_ROOT_PASSWORD: sge_password_dev
+    ports:
+      - '9000:9000'   # S3 API
+      - '9001:9001'   # MinIO Console (http://localhost:9001)
+    volumes:
+      - sge_minio_data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  api:
+    build: { context: ., dockerfile: Dockerfile.dev }
+    container_name: sge_api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT_INTERNAL: http://minio:9000
+    ports:
+      - '3000:3000'
+      - '9229:9229'    # debug port
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+      minio:    { condition: service_healthy }
+
+volumes:
+  sge_postgres_data:
+  sge_redis_data:
+  sge_minio_data:
