@@ -66,6 +66,23 @@ export class ChangePasswordDto {
   new_password: string;
 }
 
+// ─── Activación de cuenta ────────────────────────────────────
+
+export class ActivateAccountDto {
+  @ApiProperty({ example: 'a3f9...raw-token', description: 'Token raw recibido por email' })
+  @IsString()
+  @MinLength(64)
+  token: string;
+
+  @ApiProperty({ example: 'MiPassword123!', minLength: 8 })
+  @IsString()
+  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
+    message: 'La contraseña debe tener al menos una mayúscula, una minúscula y un número',
+  })
+  password: string;
+}
+
 // ─── 2FA ─────────────────────────────────────────────────────
 
 export class Verify2FADto {

@@ -164,7 +164,7 @@ export class InscripcionesRepository {
     return rows;
   }
 
-  // ── Verificar duplicado ───────────────────────────────────────
+  // ── Verificar duplicado mismo curso ──────────────────────────
 
   async exists(alumnoId: string, cursoId: string, cicloLectivo: number): Promise<boolean> {
     const { rows } = await this.pool.query<{ count: string }>(
@@ -173,6 +173,68 @@ export class InscripcionesRepository {
       [alumnoId, cursoId, cicloLectivo],
     );
     return Number(rows[0].count) > 0;
+  }
+
+  // ── Verificar si alumno ya tiene inscripción activa en el ciclo ─
+
+  async existsEnCiclo(alumnoId: string, cicloLectivo: number): Promise<boolean> {
+    const { rows } = await this.pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM inscripciones
+       WHERE alumno_id = $1 AND ciclo_lectivo = $2 AND estado != 'baja'`,
+      [alumnoId, cicloLectivo],
+    );
+    return Number(rows[0].count) > 0;
+  }
+
+  // ── Todos los alumnos no dados de baja de un curso/ciclo ─────
+  // Usado por masiva para que el usuario pueda ver y desseleccionar
+
+  async findTodosByCursoCiclo(
+    cursoId: string,
+    cicloLectivo: number,
+    institucionId: string,
+  ): Promise<InscripcionRow[]> {
+    const { rows } = await this.pool.query<InscripcionRow>(
+      `SELECT i.*,
+              a.nombre   AS alumno_nombre,
+              a.apellido AS alumno_apellido,
+              a.numero_legajo AS alumno_legajo,
+              c.nombre   AS curso_nombre
+       FROM inscripciones i
+       JOIN alumnos a ON a.id = i.alumno_id
+       JOIN cursos  c ON c.id = i.curso_id
+       WHERE i.curso_id = $1
+         AND i.ciclo_lectivo = $2
+         AND i.institucion_id = $3
+         AND i.estado != 'baja'
+         AND a.estado = 'activo'
+       ORDER BY a.apellido, a.nombre`,
+      [cursoId, cicloLectivo, institucionId],
+    );
+    return rows;
+  }
+
+  // ── Alumnos activos sin inscripción en el ciclo dado ─────────
+
+  async findAlumnosDisponibles(
+    cicloLectivo: number,
+    institucionId: string,
+  ): Promise<Array<{ id: string; nombre: string; apellido: string; numero_legajo: string }>> {
+    const { rows } = await this.pool.query(
+      `SELECT a.id, a.nombre, a.apellido, a.numero_legajo
+       FROM alumnos a
+       WHERE a.estado = 'activo'
+         AND a.institucion_id = $1
+         AND NOT EXISTS (
+           SELECT 1 FROM inscripciones i
+           WHERE i.alumno_id = a.id
+             AND i.ciclo_lectivo = $2
+             AND i.estado != 'baja'
+         )
+       ORDER BY a.apellido, a.nombre`,
+      [institucionId, cicloLectivo],
+    );
+    return rows;
   }
 
   // ── Cambiar estado ────────────────────────────────────────────

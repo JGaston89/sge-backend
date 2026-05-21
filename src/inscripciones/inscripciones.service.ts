@@ -15,11 +15,9 @@ export class InscripcionesService {
   // ── Crear inscripción individual ─────────────────────────────
 
   async create(dto: CreateInscripcionDto, user: JwtPayload) {
-    const duplicate = await this.repo.exists(dto.alumno_id, dto.curso_id, dto.ciclo_lectivo);
-    if (duplicate) {
-      throw new ConflictException(
-        `El alumno ya está inscripto en ese curso para el ciclo ${dto.ciclo_lectivo}`,
-      );
+    const yaEnCiclo = await this.repo.existsEnCiclo(dto.alumno_id, dto.ciclo_lectivo);
+    if (yaEnCiclo) {
+      throw new ConflictException('El alumno ya se encuentra inscripto en un curso');
     }
 
     return this.repo.create({
@@ -46,10 +44,48 @@ export class InscripcionesService {
     return this.repo.findByAlumno(alumnoId, user.inst);
   }
 
+  // ── Alumnos disponibles para inscribir en un ciclo ───────────
+
+  async getAlumnosDisponibles(cicloLectivo: number, user: JwtPayload) {
+    return this.repo.findAlumnosDisponibles(cicloLectivo, user.inst);
+  }
+
+  // ── Asignación masiva fresca (alumnos sin curso en el ciclo) ─
+
+  async asignarMasivo(
+    dto: { curso_id: string; ciclo_lectivo: number; alumno_ids: string[]; estado?: 'regular' | 'libre'; observaciones?: string },
+    user: JwtPayload,
+  ) {
+    const hoy = new Date().toISOString().slice(0, 10);
+    const inscriptos: string[] = [];
+    const errores: Array<{ alumno_id: string; mensaje: string }> = [];
+
+    for (const alumnoId of dto.alumno_ids) {
+      try {
+        await this.create(
+          {
+            alumno_id:         alumnoId,
+            curso_id:          dto.curso_id,
+            ciclo_lectivo:     dto.ciclo_lectivo,
+            estado:            dto.estado ?? 'regular',
+            fecha_inscripcion: hoy,
+            observaciones:     dto.observaciones,
+          },
+          user,
+        );
+        inscriptos.push(alumnoId);
+      } catch (e: any) {
+        errores.push({ alumno_id: alumnoId, mensaje: e.message ?? 'Error desconocido' });
+      }
+    }
+
+    return { inscriptos: inscriptos.length, errores, total: dto.alumno_ids.length };
+  }
+
   // ── Preview reinscripción masiva ─────────────────────────────
 
   async previsualizarMasiva(dto: InscripcionMasivaDto, user: JwtPayload) {
-    const candidatos = await this.repo.findRegularesByCursoCiclo(
+    const candidatos = await this.repo.findTodosByCursoCiclo(
       dto.curso_id_origen,
       dto.ciclo_origen,
       user.inst,

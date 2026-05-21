@@ -1,6 +1,7 @@
 import { Injectable, Inject, NotFoundException, ConflictException } from '@nestjs/common';
 import { Pool } from 'pg';
 import { DATABASE_POOL } from '../database/database.module';
+import { AccesoEstado } from '../common/enums/acceso-estado.enum';
 import type { CreateDocenteDto, UpdateDocenteDto, CreateAsignacionDto } from './dto/docentes.dto';
 
 export interface LegajoDocente {
@@ -21,6 +22,10 @@ export interface LegajoDocente {
   total_asignaciones: number;
   created_at: Date;
   updated_at: Date;
+  // ── Campos de acceso al sistema ──────────────────────────────
+  acceso_estado: AccesoEstado;
+  ultimo_envio_activacion: Date | null;
+  ultimo_acceso: Date | null;
 }
 
 export interface Asignacion {
@@ -67,12 +72,19 @@ export class DocentesRepository {
     const { rows } = await this.pool.query<LegajoDocente>(
       `SELECT ld.*,
               u.nombre || ' ' || u.apellido AS usuario_nombre,
-              COUNT(a.id)::int              AS total_asignaciones
+              COUNT(a.id)::int              AS total_asignaciones,
+              u.ultimo_acceso,
+              u.ultimo_envio_activacion,
+              CASE
+                WHEN ld.usuario_id IS NULL      THEN 'SIN_CUENTA'
+                WHEN u.cuenta_activada = false  THEN 'PENDIENTE'
+                ELSE                                 'ACTIVADO'
+              END AS acceso_estado
          FROM legajos_docentes ld
     LEFT JOIN usuarios    u ON u.id = ld.usuario_id
     LEFT JOIN asignaciones a ON a.docente_id = ld.id
         WHERE ${conditions.join(' AND ')}
-     GROUP BY ld.id, u.nombre, u.apellido
+     GROUP BY ld.id, u.nombre, u.apellido, u.ultimo_acceso, u.ultimo_envio_activacion, u.cuenta_activada
      ORDER BY ld.apellido, ld.nombre`,
       params,
     );
@@ -83,12 +95,19 @@ export class DocentesRepository {
     const { rows } = await this.pool.query<LegajoDocente>(
       `SELECT ld.*,
               u.nombre || ' ' || u.apellido AS usuario_nombre,
-              COUNT(a.id)::int              AS total_asignaciones
+              COUNT(a.id)::int              AS total_asignaciones,
+              u.ultimo_acceso,
+              u.ultimo_envio_activacion,
+              CASE
+                WHEN ld.usuario_id IS NULL      THEN 'SIN_CUENTA'
+                WHEN u.cuenta_activada = false  THEN 'PENDIENTE'
+                ELSE                                 'ACTIVADO'
+              END AS acceso_estado
          FROM legajos_docentes ld
     LEFT JOIN usuarios    u ON u.id = ld.usuario_id
     LEFT JOIN asignaciones a ON a.docente_id = ld.id
         WHERE ld.id = $1 AND ld.institucion_id = $2
-     GROUP BY ld.id, u.nombre, u.apellido`,
+     GROUP BY ld.id, u.nombre, u.apellido, u.ultimo_acceso, u.ultimo_envio_activacion, u.cuenta_activada`,
       [id, institucion_id],
     );
     if (!rows[0]) throw new NotFoundException('Docente no encontrado');

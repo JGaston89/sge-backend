@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { AlumnosRepository, Alumno, AlumnoPage, HistorialEntry, AlumnoEnRiesgo } from './alumnos.repository';
+import { CuentasService } from '../cuentas/cuentas.service';
 import { CreateAlumnoDto } from './dto/create-alumno.dto';
 import { UpdateAlumnoDto } from './dto/update-alumno.dto';
 import { BajaAlumnoDto } from './dto/baja-alumno.dto';
@@ -15,7 +16,10 @@ import { QueryAlumnosDto } from './dto/query-alumnos.dto';
 export class AlumnosService {
   private readonly logger = new Logger(AlumnosService.name);
 
-  constructor(private readonly alumnosRepo: AlumnosRepository) {}
+  constructor(
+    private readonly alumnosRepo: AlumnosRepository,
+    private readonly cuentas: CuentasService,
+  ) {}
 
   // ─── ALTA ─────────────────────────────────────────────────
 
@@ -29,6 +33,21 @@ export class AlumnosService {
 
     const numeroLegajo = await this.alumnosRepo.generarNumeroLegajo(user.inst);
     const alumno = await this.alumnosRepo.create(user.inst, dto, numeroLegajo);
+
+    // Auto-crear cuenta si tiene email (fire-and-forget: no bloquea la respuesta HTTP)
+    if (dto.email) {
+      void this.cuentas.autoCreateAccount({
+        nombre:        alumno.nombre,
+        apellido:      alumno.apellido,
+        email:         dto.email,
+        rol:           'alumno',
+        institucionId: user.inst,
+        entidad:       'alumnos',
+        entidadId:     alumno.id,
+      }).catch(err =>
+        this.logger.error(`Error al auto-crear cuenta para alumno ${alumno.id}: ${err.message}`),
+      );
+    }
 
     await this.alumnosRepo.auditLog({
       usuario_id:    user.sub,
@@ -74,6 +93,21 @@ export class AlumnosService {
     }
 
     const despues = await this.alumnosRepo.update(id, user.inst, dto);
+
+    // Si se agregó o cambió el email → crear/vincular cuenta y enviar activación (fire-and-forget)
+    if (dto.email && dto.email !== antes.email) {
+      void this.cuentas.autoCreateAccount({
+        nombre:        despues.nombre,
+        apellido:      despues.apellido,
+        email:         dto.email,
+        rol:           'alumno',
+        institucionId: user.inst,
+        entidad:       'alumnos',
+        entidadId:     despues.id,
+      }).catch(err =>
+        this.logger.error(`Error al auto-crear cuenta para alumno ${despues.id}: ${err.message}`),
+      );
+    }
 
     await this.alumnosRepo.auditLog({
       usuario_id:     user.sub,

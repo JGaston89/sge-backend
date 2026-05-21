@@ -23,7 +23,7 @@ export class AltaAcademicaController {
   }
 
   @Post('cursos')
-  @Roles('admin', 'directivo')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Crear un nuevo curso' })
   createCurso(
     @Body() body: { nombre: string; anio_academico: number; nivel?: string; turno?: string; materia_ids?: string[] },
@@ -33,7 +33,7 @@ export class AltaAcademicaController {
   }
 
   @Patch('cursos/:id')
-  @Roles('admin', 'directivo')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Editar nombre / año de un curso' })
   @ApiParam({ name: 'id' })
   updateCurso(
@@ -46,7 +46,7 @@ export class AltaAcademicaController {
 
   @Delete('cursos/:id')
   @HttpCode(HttpStatus.OK)
-  @Roles('admin', 'directivo')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Activar / desactivar un curso (toggle)' })
   @ApiParam({ name: 'id' })
   toggleCurso(
@@ -65,7 +65,7 @@ export class AltaAcademicaController {
   }
 
   @Post('materias')
-  @Roles('admin', 'directivo')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Crear una nueva materia' })
   createMateria(
     @Body() body: { nombre: string; codigo?: string },
@@ -75,7 +75,7 @@ export class AltaAcademicaController {
   }
 
   @Patch('materias/:id')
-  @Roles('admin', 'directivo')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Editar nombre / código de una materia' })
   @ApiParam({ name: 'id' })
   updateMateria(
@@ -88,7 +88,7 @@ export class AltaAcademicaController {
 
   @Delete('materias/:id')
   @HttpCode(HttpStatus.OK)
-  @Roles('admin', 'directivo')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Activar / desactivar una materia (toggle)' })
   @ApiParam({ name: 'id' })
   toggleMateria(
@@ -107,7 +107,7 @@ export class AltaAcademicaController {
   }
 
   @Post('periodos')
-  @Roles('admin', 'directivo')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Crear un nuevo período' })
   createPeriodo(
     @Body('nombre') nombre: string,
@@ -117,7 +117,7 @@ export class AltaAcademicaController {
   }
 
   @Patch('periodos/:id')
-  @Roles('admin', 'directivo')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Renombrar un período' })
   @ApiParam({ name: 'id' })
   updatePeriodo(
@@ -130,7 +130,7 @@ export class AltaAcademicaController {
 
   @Delete('periodos/:id')
   @HttpCode(HttpStatus.OK)
-  @Roles('admin', 'directivo')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Activar / desactivar un período (toggle)' })
   @ApiParam({ name: 'id' })
   togglePeriodo(
@@ -149,7 +149,7 @@ export class AltaAcademicaController {
   }
 
   @Post('ciclos')
-  @Roles('admin', 'directivo')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Crear un nuevo ciclo lectivo' })
   createCiclo(
     @Body('anio') anio: number,
@@ -159,7 +159,7 @@ export class AltaAcademicaController {
   }
 
   @Patch('ciclos/:id')
-  @Roles('admin', 'directivo')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Editar un ciclo lectivo' })
   @ApiParam({ name: 'id' })
   updateCiclo(
@@ -172,7 +172,7 @@ export class AltaAcademicaController {
 
   @Delete('ciclos/:id')
   @HttpCode(HttpStatus.OK)
-  @Roles('admin', 'directivo')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Activar / desactivar un ciclo lectivo (toggle)' })
   @ApiParam({ name: 'id' })
   toggleCiclo(

@@ -59,7 +59,7 @@ export class CalificacionesController {
   // ─── Carga individual ─────────────────────────────────────
 
   @Post()
-  @Roles('admin', 'directivo', 'docente')
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @ApiOperation({ summary: 'Cargar o actualizar una calificación individual' })
   @ApiResponse({ status: 201, description: 'Calificación guardada (upsert)' })
   @ApiResponse({ status: 409, description: 'El acta está cerrada' })
@@ -74,7 +74,7 @@ export class CalificacionesController {
 
   @Post('bulk')
   @HttpCode(HttpStatus.OK)
-  @Roles('admin', 'directivo', 'docente')
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @ApiOperation({ summary: 'Cargar o actualizar múltiples calificaciones en una sola operación' })
   @ApiResponse({ status: 200, description: 'Calificaciones guardadas' })
   @ApiResponse({ status: 409, description: 'El acta está cerrada' })
@@ -102,7 +102,7 @@ export class CalificacionesController {
 
   @Patch(':id/cerrar')
   @HttpCode(HttpStatus.OK)
-  @Roles('admin', 'directivo', 'docente')
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @ApiOperation({ summary: 'Cerrar un acta (pasa a estado definitivo)' })
   @ApiParam({ name: 'id', description: 'UUID del acta' })
   @ApiResponse({ status: 200, description: 'Acta cerrada' })
@@ -120,7 +120,7 @@ export class CalificacionesController {
 
   @Patch(':id/rectificar')
   @HttpCode(HttpStatus.OK)
-  @Roles('admin', 'directivo')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Reabrir un acta cerrada para corrección (solo directivo/admin)' })
   @ApiParam({ name: 'id', description: 'UUID del acta' })
   @ApiResponse({ status: 200, description: 'Acta reabierta a estado borrador' })

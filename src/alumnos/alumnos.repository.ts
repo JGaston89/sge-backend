@@ -1,6 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { Pool } from 'pg';
 import { DATABASE_POOL } from '../database/database.module';
+import { AccesoEstado } from '../common/enums/acceso-estado.enum';
 import { CreateAlumnoDto } from './dto/create-alumno.dto';
 import { UpdateAlumnoDto } from './dto/update-alumno.dto';
 
@@ -32,6 +33,11 @@ export interface Alumno {
   motivo_baja: string | null;
   created_at: Date;
   updated_at: Date;
+  // ── Campos de acceso al sistema (JOIN con usuarios) ──────────
+  usuario_id: string | null;
+  acceso_estado: AccesoEstado;
+  ultimo_envio_activacion: Date | null;
+  ultimo_acceso: Date | null;
 }
 
 export interface AlumnoPage {
@@ -174,7 +180,18 @@ export class AlumnosRepository {
     const pageWhere = pageConditions.join(' AND ');
 
     const { rows } = await this.pool.query<Alumno>(
-      `SELECT * FROM alumnos a
+      `SELECT
+         a.*,
+         a.usuario_id,
+         u.ultimo_acceso,
+         u.ultimo_envio_activacion,
+         CASE
+           WHEN a.usuario_id IS NULL          THEN 'SIN_CUENTA'
+           WHEN u.cuenta_activada = false      THEN 'PENDIENTE'
+           ELSE                                     'ACTIVADO'
+         END AS acceso_estado
+       FROM alumnos a
+       LEFT JOIN usuarios u ON u.id = a.usuario_id
        WHERE ${pageWhere}
        ORDER BY a.created_at DESC, a.id DESC
        LIMIT $${idx}`,
@@ -197,7 +214,19 @@ export class AlumnosRepository {
 
   async findById(id: string, institucionId: string): Promise<Alumno | null> {
     const { rows } = await this.pool.query<Alumno>(
-      `SELECT * FROM alumnos WHERE id = $1 AND institucion_id = $2`,
+      `SELECT
+         a.*,
+         a.usuario_id,
+         u.ultimo_acceso,
+         u.ultimo_envio_activacion,
+         CASE
+           WHEN a.usuario_id IS NULL     THEN 'SIN_CUENTA'
+           WHEN u.cuenta_activada = false THEN 'PENDIENTE'
+           ELSE                               'ACTIVADO'
+         END AS acceso_estado
+       FROM alumnos a
+       LEFT JOIN usuarios u ON u.id = a.usuario_id
+       WHERE a.id = $1 AND a.institucion_id = $2`,
       [id, institucionId],
     );
     return rows[0] ?? null;

@@ -6,6 +6,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery, ApiParam } from '@nestj
 import { AsistenciasService } from './asistencias.service';
 import { RegistrarAsistenciaDto } from './dto/registrar-asistencia.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 
 @ApiTags('Asistencias')
@@ -18,6 +19,7 @@ export class AsistenciasController {
   // Registra (o actualiza) la asistencia de toda una clase en una fecha
 
   @Post()
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @ApiOperation({ summary: 'Registrar asistencia de una clase (upsert por alumno/materia/fecha)' })
   registrar(
     @Body() dto: RegistrarAsistenciaDto,
@@ -96,6 +98,7 @@ export class AsistenciasController {
   // ── PATCH /asistencias/:id ───────────────────────────────────
 
   @Patch(':id')
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @ApiOperation({ summary: 'Corregir el estado de un registro de asistencia' })
   @ApiParam({ name: 'id' })
   updateOne(

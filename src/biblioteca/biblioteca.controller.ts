@@ -7,6 +7,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery, ApiParam, ApiConsumes }
 import { BibliotecaService } from './biblioteca.service';
 import { CreateMaterialEstudioDto, UpdateMaterialEstudioDto } from './dto/biblioteca.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 
 @ApiTags('Biblioteca')
@@ -46,6 +47,7 @@ export class BibliotecaController {
   }
 
   @Post()
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @ApiOperation({ summary: 'Crear material de estudio' })
   createMaterial(
     @Body() dto: CreateMaterialEstudioDto,
@@ -55,6 +57,7 @@ export class BibliotecaController {
   }
 
   @Patch(':id')
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @ApiOperation({ summary: 'Editar material de estudio' })
   @ApiParam({ name: 'id' })
   updateMaterial(
@@ -65,6 +68,7 @@ export class BibliotecaController {
   }
 
   @Delete(':id')
+  @Roles('admin', 'directivo', 'administrativo')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Eliminar material (borra todos sus archivos de S3)' })
   @ApiParam({ name: 'id' })
@@ -73,6 +77,7 @@ export class BibliotecaController {
   }
 
   @Post(':id/archivos')
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
   @ApiOperation({ summary: 'Subir PDF al material' })
   @ApiConsumes('multipart/form-data')
@@ -94,6 +99,7 @@ export class BibliotecaController {
   }
 
   @Delete('archivos/:archivoId')
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Eliminar un archivo PDF' })
   @ApiParam({ name: 'archivoId' })

@@ -1,7 +1,6 @@
 import {
   IsString,
   IsOptional,
-  IsEmail,
   IsDateString,
   IsIn,
   IsArray,
@@ -10,8 +9,10 @@ import {
   MaxLength,
   Matches,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsValidEmail } from '../../common/validators/email.validator';
+import { IsValidPhone, normalizePhone } from '../../common/validators/phone.validator';
 
 // ─── Contacto de emergencia / tutor ──────────────────────────
 
@@ -25,15 +26,16 @@ export class ContactoEmergenciaDto {
   @IsIn(['padre', 'madre', 'tutor', 'otro'])
   relacion: 'padre' | 'madre' | 'tutor' | 'otro';
 
-  @ApiPropertyOptional({ example: '11-5555-5555' })
+  @ApiPropertyOptional({ example: '+54 9 11 5555-5555' })
   @IsOptional()
-  @IsString()
-  @MaxLength(30)
+  @Transform(({ value }) => normalizePhone(value))
+  @IsValidPhone()
   telefono?: string;
 
   @ApiPropertyOptional({ example: 'maria.lopez@mail.com' })
   @IsOptional()
-  @IsEmail()
+  @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase().trim() : value))
+  @IsValidEmail()
   email?: string;
 }
 
@@ -74,13 +76,14 @@ export class CreateAlumnoDto {
 
   @ApiPropertyOptional({ example: 'juan.perez@mail.com' })
   @IsOptional()
-  @IsEmail()
+  @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase().trim() : value))
+  @IsValidEmail()
   email?: string;
 
-  @ApiPropertyOptional({ example: '11-4444-4444' })
+  @ApiPropertyOptional({ example: '+54 9 11 4444-4444' })
   @IsOptional()
-  @IsString()
-  @MaxLength(30)
+  @Transform(({ value }) => normalizePhone(value))
+  @IsValidPhone()
   telefono?: string;
 
   @ApiPropertyOptional({ example: 'Av. Corrientes 1234, CABA' })

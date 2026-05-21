@@ -6,6 +6,7 @@ import { Response } from 'express';
 import { CalendarioService } from './calendario.service';
 import { CreateCicloDto, CreateEventoDto, ImportarFeriadosDto } from './dto/calendario.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
 import type { JwtPayload } from '../auth/strategies/jwt.strategy';
 
 @ApiTags('Calendario')
@@ -17,6 +18,7 @@ export class CalendarioController {
   // ── Ciclos lectivos ──────────────────────────────────────────
 
   @Post('ciclos')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Crear ciclo lectivo' })
   createCiclo(
     @Body() dto: CreateCicloDto,
@@ -40,6 +42,7 @@ export class CalendarioController {
   // ── Eventos ──────────────────────────────────────────────────
 
   @Post('eventos')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Crear evento en el calendario académico' })
   createEvento(
     @Body() dto: CreateEventoDto,
@@ -83,6 +86,7 @@ export class CalendarioController {
   // ── Feriados nacionales ──────────────────────────────────────
 
   @Post('feriados/importar')
+  @Roles('admin', 'directivo', 'administrativo')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Importar feriados argentinos desde Nager.Date API' })
   importarFeriados(

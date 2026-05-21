@@ -1,11 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { DocentesRepository } from './docentes.repository';
+import { CuentasService } from '../cuentas/cuentas.service';
 import type { CreateDocenteDto, UpdateDocenteDto, CreateAsignacionDto } from './dto/docentes.dto';
 import type { JwtPayload } from '../auth/strategies/jwt.strategy';
 
 @Injectable()
 export class DocentesService {
-  constructor(private readonly repo: DocentesRepository) {}
+  private readonly logger = new Logger(DocentesService.name);
+
+  constructor(
+    private readonly repo: DocentesRepository,
+    private readonly cuentas: CuentasService,
+  ) {}
 
   findAll(user: JwtPayload, filters: { estado?: string; search?: string }) {
     return this.repo.findAll(user.inst, filters);
@@ -15,12 +21,47 @@ export class DocentesService {
     return this.repo.findOne(id, user.inst);
   }
 
-  create(dto: CreateDocenteDto, user: JwtPayload) {
-    return this.repo.create(user.inst, dto);
+  async create(dto: CreateDocenteDto, user: JwtPayload) {
+    const docente = await this.repo.create(user.inst, dto);
+
+    // Auto-crear cuenta si tiene email
+    if (dto.email) {
+      void this.cuentas.autoCreateAccount({
+        nombre:        docente.nombre,
+        apellido:      docente.apellido,
+        email:         dto.email,
+        rol:           'docente',
+        institucionId: user.inst,
+        entidad:       'legajos_docentes',
+        entidadId:     docente.id,
+      }).catch(err =>
+        this.logger.error(`Error al auto-crear cuenta para docente ${docente.id}: ${err.message}`),
+      );
+    }
+
+    return docente;
   }
 
-  update(id: string, dto: UpdateDocenteDto, user: JwtPayload) {
-    return this.repo.update(id, user.inst, dto);
+  async update(id: string, dto: UpdateDocenteDto, user: JwtPayload) {
+    const antes   = await this.repo.findOne(id, user.inst);
+    const docente = await this.repo.update(id, user.inst, dto);
+
+    // Si se agregó o cambió el email → crear/vincular cuenta y enviar activación
+    if (dto.email && dto.email !== antes?.email) {
+      void this.cuentas.autoCreateAccount({
+        nombre:        docente.nombre,
+        apellido:      docente.apellido,
+        email:         dto.email,
+        rol:           'docente',
+        institucionId: user.inst,
+        entidad:       'legajos_docentes',
+        entidadId:     docente.id,
+      }).catch(err =>
+        this.logger.error(`Error al auto-crear cuenta para docente ${docente.id}: ${err.message}`),
+      );
+    }
+
+    return docente;
   }
 
   remove(id: string, user: JwtPayload) {

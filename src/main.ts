@@ -2,6 +2,7 @@ import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, VersioningType, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { useContainer } from 'class-validator';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
@@ -16,6 +17,9 @@ async function bootstrap() {
   const prefix    = config.get<string>('app.apiPrefix', 'api/v1');
   const corsOrigin = config.get<string>('app.corsOrigin', 'http://localhost:5173');
   const nodeEnv   = config.get<string>('app.nodeEnv', 'development');
+
+  // ─── Habilita DI de NestJS dentro de class-validator ─────
+  useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
   // ─── Seguridad ────────────────────────────────────────────
   app.use(helmet());

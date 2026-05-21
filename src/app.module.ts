@@ -10,6 +10,8 @@ import databaseConfig from './config/database.config';
 
 import { DatabaseModule }          from './database/database.module';
 import { RedisModule }             from './database/redis.module';
+import { MailerModule }            from './mailer/mailer.module';
+import { CuentasModule }           from './cuentas/cuentas.module';
 import { AuthModule }              from './auth/auth.module';
 import { AlumnosModule }           from './alumnos/alumnos.module';
 import { CalificacionesModule }    from './calificaciones/calificaciones.module';
@@ -25,11 +27,16 @@ import { CalendarioModule }      from './calendario/calendario.module';
 import { ExamenesModule }        from './examenes/examenes.module';
 import { BibliotecaModule }      from './biblioteca/biblioteca.module';
 import { EspaciosModule }        from './espacios/espacios.module';
+import { ComunicacionModule }    from './comunicacion/comunicacion.module';
+import { UsuariosModule }        from './usuarios/usuarios.module';
+import { AdministrativosModule } from './administrativos/administrativos.module';
 
-import { GlobalExceptionFilter }   from './common/filters/global-exception.filter';
-import { ResponseInterceptor }     from './common/interceptors/response.interceptor';
-import { JwtAuthGuard }            from './auth/guards/jwt-auth.guard';
-import { RolesGuard }              from './auth/guards/roles.guard';
+import { GlobalExceptionFilter }      from './common/filters/global-exception.filter';
+import { ResponseInterceptor }        from './common/interceptors/response.interceptor';
+import { JwtAuthGuard }               from './auth/guards/jwt-auth.guard';
+import { RolesGuard }                 from './auth/guards/roles.guard';
+import { MxCacheService }             from './common/services/mx-cache.service';
+import { IsValidEmailConstraint }     from './common/validators/email.validator';
 
 @Module({
   imports: [
@@ -46,6 +53,8 @@ import { RolesGuard }              from './auth/guards/roles.guard';
     // ─── Infraestructura ──────────────────────────────────
     DatabaseModule,
     RedisModule,
+    MailerModule,
+    CuentasModule,
 
     // ─── Módulos de negocio ───────────────────────────────
     AuthModule,
@@ -63,6 +72,9 @@ import { RolesGuard }              from './auth/guards/roles.guard';
     ExamenesModule,
     BibliotecaModule,
     EspaciosModule,
+    ComunicacionModule,
+    UsuariosModule,
+    AdministrativosModule,
 
     // ─── Health checks ────────────────────────────────────
     TerminusModule,
@@ -78,6 +90,10 @@ import { RolesGuard }              from './auth/guards/roles.guard';
     // Los endpoints públicos usan el decorador @Public()
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+
+    // Validadores custom (necesitan DI de NestJS via useContainer en main.ts)
+    MxCacheService,
+    IsValidEmailConstraint,
   ],
 })
 export class AppModule {}

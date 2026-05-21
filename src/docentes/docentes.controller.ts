@@ -5,8 +5,9 @@ import {
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { DocentesService } from './docentes.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
-import type { CreateDocenteDto, UpdateDocenteDto, CreateAsignacionDto } from './dto/docentes.dto';
+import { CreateDocenteDto, UpdateDocenteDto, CreateAsignacionDto } from './dto/docentes.dto';
 
 @ApiTags('Docentes')
 @ApiBearerAuth()
@@ -39,6 +40,7 @@ export class DocentesController {
   }
 
   @Post()
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Crear legajo docente' })
   create(
     @Body() dto: CreateDocenteDto,
@@ -48,6 +50,7 @@ export class DocentesController {
   }
 
   @Patch(':id')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Actualizar legajo docente' })
   @ApiParam({ name: 'id' })
   update(
@@ -59,6 +62,7 @@ export class DocentesController {
   }
 
   @Delete(':id')
+  @Roles('admin', 'directivo', 'administrativo')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Eliminar legajo docente' })
   @ApiParam({ name: 'id' })
@@ -93,6 +97,7 @@ export class DocentesController {
   }
 
   @Post('asignaciones')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Crear asignación docente → materia/curso/ciclo' })
   createAsignacion(
     @Body() dto: CreateAsignacionDto,
@@ -102,6 +107,7 @@ export class DocentesController {
   }
 
   @Delete('asignaciones/:id')
+  @Roles('admin', 'directivo', 'administrativo')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Eliminar asignación' })
   @ApiParam({ name: 'id' })

@@ -9,6 +9,7 @@ import {
   CreateReservaEspacioDto, CreateMantenimientoDto, UpdateMantenimientoDto,
 } from './dto/espacios.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
 import type { JwtPayload } from '../auth/strategies/jwt.strategy';
 
 @ApiTags('Espacios')
@@ -20,6 +21,7 @@ export class EspaciosController {
   // ── Espacios ──────────────────────────────────────────────────
 
   @Post()
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Crear espacio físico (aula, laboratorio, SUM, etc.)' })
   createEspacio(
     @Body() dto: CreateEspacioDto,
@@ -39,6 +41,7 @@ export class EspaciosController {
   }
 
   @Patch(':id/estado')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Cambiar estado de un espacio (disponible/mantenimiento/inhabilitado)' })
   @ApiParam({ name: 'id' })
   updateEstado(
@@ -78,6 +81,7 @@ export class EspaciosController {
   // ── Reservas ─────────────────────────────────────────────────
 
   @Post(':id/reservas')
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @ApiOperation({ summary: 'Reservar un espacio en una fecha y horario' })
   @ApiParam({ name: 'id' })
   createReserva(
@@ -89,12 +93,14 @@ export class EspaciosController {
   }
 
   @Get('mis-reservas')
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @ApiOperation({ summary: 'Reservas propias del usuario autenticado' })
   getMisReservas(@CurrentUser() user: JwtPayload) {
     return this.service.getMisReservas(user);
   }
 
   @Delete('reservas/:id')
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cancelar una reserva confirmada' })
   @ApiParam({ name: 'id' })
@@ -108,6 +114,7 @@ export class EspaciosController {
   // ── Mantenimiento ─────────────────────────────────────────────
 
   @Post('mantenimiento')
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @ApiOperation({ summary: 'Registrar solicitud de mantenimiento' })
   createMantenimiento(
     @Body() dto: CreateMantenimientoDto,
@@ -117,6 +124,7 @@ export class EspaciosController {
   }
 
   @Get('mantenimiento')
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @ApiOperation({ summary: 'Listar solicitudes de mantenimiento' })
   @ApiQuery({ name: 'estado', required: false, enum: ['pendiente', 'en_proceso', 'resuelto'] })
   findMantenimiento(
@@ -127,6 +135,7 @@ export class EspaciosController {
   }
 
   @Patch('mantenimiento/:id')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Actualizar estado de solicitud de mantenimiento' })
   @ApiParam({ name: 'id' })
   updateMantenimiento(

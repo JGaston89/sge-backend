@@ -15,9 +15,11 @@ export interface Usuario {
   recovery_codes: string[] | null;
   activo: boolean;
   primer_acceso: boolean;
+  cuenta_activada: boolean;
   intentos_fallidos: number;
   bloqueado_hasta: Date | null;
   ultimo_acceso: Date | null;
+  ultimo_envio_activacion: Date | null;
   roles: string[];
 }
 
@@ -25,10 +27,6 @@ export interface Usuario {
 export class AuthRepository {
   constructor(@Inject(DATABASE_POOL) private readonly pool: Pool) {}
 
-  /**
-   * Busca usuario por email + institución incluyendo sus roles en un solo query.
-   * Evita el problema N+1.
-   */
   async findByEmail(email: string, institucionId: string): Promise<Usuario | null> {
     const { rows } = await this.pool.query<Usuario>(
       `SELECT
@@ -70,6 +68,60 @@ export class AuthRepository {
       [id],
     );
     return rows[0] ?? null;
+  }
+
+  async findByActivationToken(hashedToken: string): Promise<Usuario | null> {
+    const { rows } = await this.pool.query<Usuario>(
+      `SELECT
+         u.*,
+         COALESCE(
+           array_agg(r.nombre) FILTER (
+             WHERE r.nombre IS NOT NULL
+               AND (ur.fecha_hasta IS NULL OR ur.fecha_hasta >= CURRENT_DATE)
+           ),
+           '{}'
+         ) AS roles
+       FROM usuarios u
+       LEFT JOIN usuario_roles ur ON ur.usuario_id = u.id
+       LEFT JOIN roles r ON r.id = ur.rol_id
+       WHERE u.activation_token = $1
+         AND u.activation_token_expires_at > NOW()
+       GROUP BY u.id`,
+      [hashedToken],
+    );
+    return rows[0] ?? null;
+  }
+
+  async storeActivationToken(userId: string, hashedToken: string, expiresAt: Date): Promise<void> {
+    await this.pool.query(
+      `UPDATE usuarios
+       SET activation_token              = $1,
+           activation_token_expires_at  = $2,
+           ultimo_envio_activacion      = NOW()
+       WHERE id = $3`,
+      [hashedToken, expiresAt, userId],
+    );
+  }
+
+  async markPendingActivation(userId: string): Promise<void> {
+    await this.pool.query(
+      `UPDATE usuarios SET cuenta_activada = false WHERE id = $1`,
+      [userId],
+    );
+  }
+
+  async activateAccount(userId: string, passwordHash: string): Promise<void> {
+    await this.pool.query(
+      `UPDATE usuarios
+       SET password_hash                = $1,
+           cuenta_activada              = true,
+           primer_acceso                = true,
+           activation_token             = NULL,
+           activation_token_expires_at  = NULL,
+           password_changed_at          = NOW()
+       WHERE id = $2`,
+      [passwordHash, userId],
+    );
   }
 
   async registerFailedAttempt(userId: string): Promise<void> {
@@ -167,7 +219,7 @@ export class AuthRepository {
     await this.pool.query(
       `UPDATE usuarios
        SET password_hash = $1, password_changed_at = NOW(), primer_acceso = false
-       WHERE id = $1`,
+       WHERE id = $2`,
       [passwordHash, userId],
     );
   }

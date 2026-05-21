@@ -4,6 +4,8 @@ import {
   UnauthorizedException,
   ForbiddenException,
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Inject,
   Logger,
 } from '@nestjs/common';
@@ -15,6 +17,7 @@ import * as qrcode from 'qrcode';
 import { RedisClientType } from 'redis';
 import { REDIS_CLIENT } from '../database/redis.module';
 import { AuthRepository } from './auth.repository';
+import { MailerService } from '../mailer/mailer.service';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { LoginDto } from './dto/auth.dto';
 
@@ -61,6 +64,7 @@ export class AuthService {
     private readonly authRepo: AuthRepository,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly mailer: MailerService,
     @Inject(REDIS_CLIENT) private readonly redis: RedisClientType,
   ) {}
 
@@ -100,6 +104,12 @@ export class AuthService {
 
     if (!usuario.activo) {
       throw new ForbiddenException('Cuenta suspendida. Contacte al administrador.');
+    }
+
+    if (!usuario.cuenta_activada) {
+      throw new ForbiddenException(
+        'Cuenta pendiente de activación. Revisá tu email para activarla.',
+      );
     }
 
     // 4. Verificar contraseña
@@ -278,6 +288,104 @@ export class AuthService {
 
   async getInstituciones() {
     return this.authRepo.getInstituciones();
+  }
+
+  // ─── CAMBIO DE CONTRASEÑA ────────────────────────────────────
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    const usuario = await this.authRepo.findById(userId);
+    if (!usuario) throw new UnauthorizedException();
+
+    const ok = await bcrypt.compare(currentPassword, usuario.password_hash);
+    if (!ok) throw new UnauthorizedException('Contraseña actual incorrecta');
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    await this.authRepo.updatePassword(userId, hash);
+
+    await this.authRepo.auditLog({ usuario_id: userId, accion: 'PASSWORD_CHANGED' });
+    this.logger.log(`Contraseña cambiada: ${usuario.email}`);
+  }
+
+  // ─── ACTIVACIÓN DE CUENTA ────────────────────────────────────
+
+  async activate(rawToken: string, newPassword: string): Promise<void> {
+    const hashed = hashToken(rawToken);
+    const usuario = await this.authRepo.findByActivationToken(hashed);
+
+    if (!usuario) {
+      throw new BadRequestException(
+        'El enlace de activación es inválido o ya expiró. Solicitá uno nuevo.',
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.authRepo.activateAccount(usuario.id, passwordHash);
+
+    await this.authRepo.auditLog({
+      usuario_id: usuario.id,
+      accion: 'CUENTA_ACTIVADA',
+    });
+
+    this.logger.log(`Cuenta activada: ${usuario.email}`);
+  }
+
+  async resendActivation(targetUserId: string): Promise<void> {
+    const usuario = await this.authRepo.findById(targetUserId);
+    if (!usuario) throw new BadRequestException('Usuario no encontrado');
+    if (usuario.cuenta_activada) {
+      throw new BadRequestException('La cuenta ya está activada');
+    }
+    if (!usuario.email) {
+      throw new BadRequestException('El usuario no tiene email registrado');
+    }
+
+    // Rate limit: 1 envío cada 5 minutos
+    if (usuario.ultimo_envio_activacion) {
+      const msSinceLastSend = Date.now() - new Date(usuario.ultimo_envio_activacion).getTime();
+      const cooldownMs = 5 * 60 * 1000;
+      if (msSinceLastSend < cooldownMs) {
+        const segundosRestantes = Math.ceil((cooldownMs - msSinceLastSend) / 1000);
+        throw new HttpException(
+          `Esperá ${segundosRestantes} segundos antes de reenviar la invitación`,
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+    }
+
+    const { raw, hashed } = this.generateActivationToken();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await this.authRepo.storeActivationToken(targetUserId, hashed, expiresAt);
+    await this.mailer.sendActivationEmail(usuario.email, usuario.nombre, raw);
+
+    this.logger.log(`Activación reenviada a: ${usuario.email}`);
+  }
+
+  async adminForceReset(targetUserId: string): Promise<void> {
+    const usuario = await this.authRepo.findById(targetUserId);
+    if (!usuario) throw new BadRequestException('Usuario no encontrado');
+    if (!usuario.email) {
+      throw new BadRequestException('El usuario no tiene email registrado');
+    }
+
+    const { raw, hashed } = this.generateActivationToken();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await this.authRepo.storeActivationToken(targetUserId, hashed, expiresAt);
+    // Marcar la cuenta como no activada para forzar reset de contraseña
+    await this.authRepo.markPendingActivation(targetUserId);
+    await this.mailer.sendPasswordResetEmail(usuario.email, usuario.nombre, raw);
+
+    await this.authRepo.auditLog({
+      usuario_id: targetUserId,
+      accion: 'ADMIN_FORCE_RESET',
+    });
+
+    this.logger.warn(`Reset forzado de contraseña para: ${usuario.email}`);
+  }
+
+  generateActivationToken(): { raw: string; hashed: string } {
+    const raw    = crypto.randomBytes(32).toString('hex');
+    const hashed = hashToken(raw);
+    return { raw, hashed };
   }
 
   async disable2FA(userId: string, password: string): Promise<void> {

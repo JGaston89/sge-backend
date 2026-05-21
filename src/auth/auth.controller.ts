@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Body,
+  Param,
   Req,
   HttpCode,
   HttpStatus,
@@ -25,9 +26,12 @@ import {
   LoginDto,
   RefreshTokenDto,
   LogoutDto,
+  ChangePasswordDto,
   Verify2FADto,
   Disable2FADto,
+  ActivateAccountDto,
 } from './dto/auth.dto';
+import { Roles } from '../common/decorators/roles.decorator';
 
 function getMeta(req: Request) {
   const forwarded = req.headers['x-forwarded-for'] as string | undefined;
@@ -91,6 +95,7 @@ export class AuthController {
       apellido:       usuario?.apellido ?? '',
       institucion_id: user.inst,
       roles:          user.roles,
+      primer_acceso:  usuario?.primer_acceso ?? false,
     };
   }
 
@@ -114,6 +119,51 @@ export class AuthController {
   async logoutAll(@CurrentUser('sub') userId: string, @Req() req: Request) {
     await this.authService.logoutAll(userId, getAccessToken(req));
     return { message: 'Todas las sesiones cerradas correctamente' };
+  }
+
+  // ─── CAMBIO DE CONTRASEÑA ─────────────────────────────────
+
+  @Post('update-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cambiar contraseña (requiere contraseña actual)' })
+  async updatePassword(
+    @Body() dto: ChangePasswordDto,
+    @CurrentUser('sub') userId: string,
+  ) {
+    await this.authService.changePassword(userId, dto.current_password, dto.new_password);
+    return { message: 'Contraseña actualizada correctamente' };
+  }
+
+  // ─── ACTIVACIÓN DE CUENTA ─────────────────────────────────
+
+  @Public()
+  @Post('activate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Activar cuenta con token de email y establecer contraseña' })
+  async activate(@Body() dto: ActivateAccountDto) {
+    await this.authService.activate(dto.token, dto.password);
+    return { message: 'Cuenta activada correctamente. Ya podés iniciar sesión.' };
+  }
+
+  @Post('resend-activation/:id')
+  @HttpCode(HttpStatus.OK)
+  @Roles('admin', 'directivo')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reenviar email de activación (admin/directivo)' })
+  async resendActivation(@Param('id') id: string) {
+    await this.authService.resendActivation(id);
+    return { message: 'Email de activación reenviado correctamente' };
+  }
+
+  @Post('admin-reset/:id')
+  @HttpCode(HttpStatus.OK)
+  @Roles('admin', 'directivo')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Forzar reset de contraseña (admin/directivo)' })
+  async adminForceReset(@Param('id') id: string) {
+    await this.authService.adminForceReset(id);
+    return { message: 'Se envió un enlace de restablecimiento de contraseña' };
   }
 
   // ─── 2FA ──────────────────────────────────────────────────

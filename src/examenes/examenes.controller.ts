@@ -7,6 +7,7 @@ import { Response } from 'express';
 import { ExamenesService } from './examenes.service';
 import { CreateMesaDto, InscribirAlumnoDto, CargarNotasDto } from './dto/examenes.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
 import type { JwtPayload } from '../auth/strategies/jwt.strategy';
 
 @ApiTags('Examenes')
@@ -18,6 +19,7 @@ export class ExamenesController {
   // ── Mesas ────────────────────────────────────────────────────
 
   @Post('mesas')
+  @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Crear mesa de examen' })
   createMesa(
     @Body() dto: CreateMesaDto,
@@ -60,6 +62,7 @@ export class ExamenesController {
   // ── Inscripción / Desinscripción ─────────────────────────────
 
   @Post('mesas/:id/inscribir')
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @ApiOperation({ summary: 'Inscribir alumno a una mesa de examen' })
   @ApiParam({ name: 'id' })
   inscribir(
@@ -71,6 +74,7 @@ export class ExamenesController {
   }
 
   @Delete('inscripciones/:id')
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Desinscribir alumno de una mesa (bloqueado si quedan < 48hs)' })
   @ApiParam({ name: 'id' })
@@ -84,6 +88,7 @@ export class ExamenesController {
   // ── Notas ────────────────────────────────────────────────────
 
   @Put('mesas/:id/notas')
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @ApiOperation({ summary: 'Docente carga notas del examen para todos los inscriptos' })
   @ApiParam({ name: 'id' })
   cargarNotas(
@@ -97,6 +102,7 @@ export class ExamenesController {
   // ── Acta ─────────────────────────────────────────────────────
 
   @Post('mesas/:id/acta/cerrar')
+  @Roles('admin', 'directivo', 'administrativo', 'docente')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cerrar el acta de una mesa (estado → cerrada)' })
   @ApiParam({ name: 'id' })

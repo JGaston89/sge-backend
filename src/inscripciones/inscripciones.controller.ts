@@ -24,6 +24,7 @@ import { InscripcionesService } from './inscripciones.service';
 import { CreateInscripcionDto } from './dto/create-inscripcion.dto';
 import { InscripcionMasivaDto } from './dto/inscripcion-masiva.dto';
 import { CambiarEstadoDto } from './dto/cambiar-estado.dto';
+import { AsignarMasivoDto } from './dto/asignar-masivo.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
@@ -82,6 +83,30 @@ export class InscripcionesController {
     @CurrentUser() user: JwtPayload,
   ) {
     return this.service.findByCursoCiclo(cursoId, Number(cicloLectivo), user);
+  }
+
+  // ── GET /inscripciones/alumnos-disponibles?ciclo_lectivo= ────
+
+  @Get('alumnos-disponibles')
+  @ApiOperation({ summary: 'Alumnos activos sin inscripción en el ciclo dado' })
+  @ApiQuery({ name: 'ciclo_lectivo', required: true, type: Number })
+  getAlumnosDisponibles(
+    @Query('ciclo_lectivo') cicloLectivo: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.getAlumnosDisponibles(Number(cicloLectivo), user);
+  }
+
+  // ── POST /inscripciones/asignar-masivo ───────────────────────
+
+  @Post('asignar-masivo')
+  @Roles('admin', 'directivo', 'administrativo')
+  @ApiOperation({ summary: 'Inscribir masivamente alumnos sin curso en un ciclo' })
+  asignarMasivo(
+    @Body() dto: AsignarMasivoDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.asignarMasivo(dto, user);
   }
 
   // ── POST /inscripciones/masiva/preview ───────────────────────
