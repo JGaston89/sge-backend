@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { AlumnosRepository, Alumno, AlumnoPage, HistorialEntry, AlumnoEnRiesgo } from './alumnos.repository';
+import { TutoresRepository, TutorConRelacion, CreateTutorDto, LinkTutorDto } from './tutores.repository';
 import { CuentasService } from '../cuentas/cuentas.service';
 import { CreateAlumnoDto } from './dto/create-alumno.dto';
 import { UpdateAlumnoDto } from './dto/update-alumno.dto';
@@ -18,6 +19,7 @@ export class AlumnosService {
 
   constructor(
     private readonly alumnosRepo: AlumnosRepository,
+    private readonly tutoresRepo: TutoresRepository,
     private readonly cuentas: CuentasService,
   ) {}
 
@@ -158,9 +160,69 @@ export class AlumnosService {
 
   async getHistorial(id: string, user: JwtPayload): Promise<HistorialEntry[]> {
     const alumno = await this.alumnosRepo.findById(id, user.inst);
-    if (!alumno) {
-      throw new NotFoundException(`Alumno con id ${id} no encontrado`);
-    }
+    if (!alumno) throw new NotFoundException(`Alumno con id ${id} no encontrado`);
     return this.alumnosRepo.getHistorial(id);
+  }
+
+  // ─── TUTORES ──────────────────────────────────────────────
+
+  async getTutores(alumnoId: string, user: JwtPayload): Promise<TutorConRelacion[]> {
+    await this.findOne(alumnoId, user);
+    return this.tutoresRepo.findByAlumno(alumnoId);
+  }
+
+  async buscarTutor(tipoDocumento: string, numeroDocumento: string) {
+    return this.tutoresRepo.buscarPorDocumento(tipoDocumento, numeroDocumento);
+  }
+
+  async addTutor(
+    alumnoId: string,
+    dto: { tutor: CreateTutorDto; relacion: LinkTutorDto; tutor_id?: string },
+    user: JwtPayload,
+  ): Promise<TutorConRelacion[]> {
+    await this.findOne(alumnoId, user);
+
+    let tutorId: string;
+
+    if (dto.tutor_id) {
+      // Vincular tutor existente
+      const existing = await this.tutoresRepo.findById(dto.tutor_id);
+      if (!existing) throw new NotFoundException('Tutor no encontrado');
+      tutorId = dto.tutor_id;
+    } else {
+      // Crear tutor nuevo
+      const created = await this.tutoresRepo.create(dto.tutor);
+      tutorId = created.id;
+    }
+
+    await this.tutoresRepo.link(alumnoId, tutorId, dto.relacion);
+    return this.tutoresRepo.findByAlumno(alumnoId);
+  }
+
+  async updateTutorDatos(
+    alumnoId: string,
+    tutorId: string,
+    dto: Partial<CreateTutorDto>,
+    user: JwtPayload,
+  ) {
+    await this.findOne(alumnoId, user);
+    return this.tutoresRepo.update(tutorId, dto);
+  }
+
+  async updateRelacion(
+    alumnoId: string,
+    tutorId: string,
+    dto: Partial<LinkTutorDto>,
+    user: JwtPayload,
+  ) {
+    await this.findOne(alumnoId, user);
+    await this.tutoresRepo.updateRelacion(alumnoId, tutorId, dto);
+    return this.tutoresRepo.findByAlumno(alumnoId);
+  }
+
+  async removeTutor(alumnoId: string, tutorId: string, user: JwtPayload) {
+    await this.findOne(alumnoId, user);
+    await this.tutoresRepo.unlink(alumnoId, tutorId);
+    return { ok: true };
   }
 }

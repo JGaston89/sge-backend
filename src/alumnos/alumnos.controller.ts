@@ -214,10 +214,10 @@ export class AlumnosController {
         nacionalidad:     alumno.nacionalidad,
         email:            alumno.email,
         telefono:         alumno.telefono,
-        domicilio:        alumno.domicilio,
+        domicilio:        [alumno.domicilio_calle, alumno.domicilio_numero, alumno.localidad, alumno.provincia].filter(Boolean).join(', ') || null,
         estado:           alumno.estado,
         fecha_baja:       alumno.fecha_baja,
-        contactos:        alumno.contactos ?? [],
+        contactos:        [],
       },
       institucion: { nombre: 'Sistema de Gestión Educativa' },
       inscripciones: inscripciones.map((i) => ({
@@ -311,14 +311,87 @@ export class AlumnosController {
   @HttpCode(HttpStatus.OK)
   @Roles('admin', 'directivo', 'administrativo')
   @ApiOperation({ summary: 'Eliminar documento del legajo (soft delete)' })
-  @ApiParam({ name: 'id', description: 'UUID del alumno' })
-  @ApiParam({ name: 'docId', description: 'UUID del documento' })
-  @ApiResponse({ status: 200, description: 'Documento eliminado' })
+  @ApiParam({ name: 'id' }) @ApiParam({ name: 'docId' })
   eliminarDocumento(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('docId', ParseUUIDPipe) docId: string,
     @CurrentUser() user: JwtPayload,
   ) {
     return this.documentosService.delete(id, docId, user);
+  }
+
+  // ─── TUTORES ──────────────────────────────────────────────
+
+  @Get('tutores/buscar')
+  @ApiOperation({ summary: 'Buscar tutor por documento (evita duplicados)' })
+  @ApiQuery({ name: 'tipo_documento', required: false, example: 'DNI' })
+  @ApiQuery({ name: 'numero_documento', required: true })
+  buscarTutor(
+    @Query('tipo_documento') tipo: string = 'DNI',
+    @Query('numero_documento') numero: string,
+    @CurrentUser() _user: JwtPayload,
+  ) {
+    return this.alumnosService.buscarTutor(tipo, numero);
+  }
+
+  @Get(':id/tutores')
+  @ApiOperation({ summary: 'Listar tutores/responsables del alumno' })
+  @ApiParam({ name: 'id' })
+  getTutores(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.alumnosService.getTutores(id, user);
+  }
+
+  @Post(':id/tutores')
+  @Roles('admin', 'directivo', 'administrativo')
+  @ApiOperation({ summary: 'Vincular tutor existente o crear uno nuevo y vincularlo' })
+  @ApiParam({ name: 'id' })
+  addTutor(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { tutor_id?: string; tutor?: any; relacion: any },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.alumnosService.addTutor(id, { tutor: body.tutor ?? {}, relacion: body.relacion, tutor_id: body.tutor_id }, user);
+  }
+
+  @Patch(':id/tutores/:tutorId/datos')
+  @Roles('admin', 'directivo', 'administrativo')
+  @ApiOperation({ summary: 'Actualizar datos personales del tutor (aplica a todos sus alumnos)' })
+  @ApiParam({ name: 'id' }) @ApiParam({ name: 'tutorId' })
+  updateTutorDatos(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('tutorId', ParseUUIDPipe) tutorId: string,
+    @Body() dto: any,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.alumnosService.updateTutorDatos(id, tutorId, dto, user);
+  }
+
+  @Patch(':id/tutores/:tutorId/relacion')
+  @Roles('admin', 'directivo', 'administrativo')
+  @ApiOperation({ summary: 'Actualizar la relación tutor-alumno (padre/madre, flags)' })
+  @ApiParam({ name: 'id' }) @ApiParam({ name: 'tutorId' })
+  updateRelacion(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('tutorId', ParseUUIDPipe) tutorId: string,
+    @Body() dto: any,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.alumnosService.updateRelacion(id, tutorId, dto, user);
+  }
+
+  @Delete(':id/tutores/:tutorId')
+  @HttpCode(HttpStatus.OK)
+  @Roles('admin', 'directivo', 'administrativo')
+  @ApiOperation({ summary: 'Desvincular tutor del alumno' })
+  @ApiParam({ name: 'id' }) @ApiParam({ name: 'tutorId' })
+  removeTutor(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('tutorId', ParseUUIDPipe) tutorId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.alumnosService.removeTutor(id, tutorId, user);
   }
 }

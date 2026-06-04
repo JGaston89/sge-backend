@@ -30,6 +30,7 @@ import { EspaciosModule }        from './espacios/espacios.module';
 import { ComunicacionModule }    from './comunicacion/comunicacion.module';
 import { UsuariosModule }        from './usuarios/usuarios.module';
 import { AdministrativosModule } from './administrativos/administrativos.module';
+import { PortalModule }          from './portal/portal.module';
 
 import { GlobalExceptionFilter }      from './common/filters/global-exception.filter';
 import { ResponseInterceptor }        from './common/interceptors/response.interceptor';
@@ -75,6 +76,7 @@ import { IsValidEmailConstraint }     from './common/validators/email.validator'
     ComunicacionModule,
     UsuariosModule,
     AdministrativosModule,
+    PortalModule,
 
     // ─── Health checks ────────────────────────────────────
     TerminusModule,

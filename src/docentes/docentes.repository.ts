@@ -14,6 +14,17 @@ export interface LegajoDocente {
   dni: string | null;
   email: string | null;
   telefono: string | null;
+  fecha_nacimiento: string | null;
+  genero: string | null;
+  nacionalidad: string | null;
+  domicilio_calle: string | null;
+  domicilio_numero: string | null;
+  domicilio_piso: string | null;
+  domicilio_torre: string | null;
+  domicilio_depto: string | null;
+  localidad: string | null;
+  provincia: string | null;
+  codigo_postal: string | null;
   titulo: string | null;
   especialidades: string[];
   fecha_ingreso: string | null;
@@ -22,7 +33,6 @@ export interface LegajoDocente {
   total_asignaciones: number;
   created_at: Date;
   updated_at: Date;
-  // ── Campos de acceso al sistema ──────────────────────────────
   acceso_estado: AccesoEstado;
   ultimo_envio_activacion: Date | null;
   ultimo_acceso: Date | null;
@@ -118,18 +128,33 @@ export class DocentesRepository {
     const { rows } = await this.pool.query<{ id: string }>(
       `INSERT INTO legajos_docentes
          (institucion_id, usuario_id, nombre, apellido, dni, email, telefono,
+          fecha_nacimiento, genero, nacionalidad,
+          domicilio_calle, domicilio_numero, domicilio_piso,
+          domicilio_torre, domicilio_depto,
+          localidad, provincia, codigo_postal,
           titulo, especialidades, fecha_ingreso, observaciones)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
        RETURNING id`,
       [
         institucion_id,
-        dto.usuario_id ?? null,
+        dto.usuario_id  ?? null,
         dto.nombre,
         dto.apellido,
-        dto.dni ?? null,
-        dto.email ?? null,
-        dto.telefono ?? null,
-        dto.titulo ?? null,
+        dto.dni         ?? null,
+        dto.email       ?? null,
+        dto.telefono    ?? null,
+        dto.fecha_nacimiento ?? null,
+        dto.genero      ?? null,
+        dto.nacionalidad ?? null,
+        dto.domicilio_calle   ?? null,
+        dto.domicilio_numero  ?? null,
+        dto.domicilio_piso    ?? null,
+        dto.domicilio_torre   ?? null,
+        dto.domicilio_depto   ?? null,
+        dto.localidad         ?? null,
+        dto.provincia         ?? null,
+        dto.codigo_postal     ?? null,
+        dto.titulo      ?? null,
         dto.especialidades ?? [],
         dto.fecha_ingreso ?? null,
         dto.observaciones ?? null,
@@ -141,6 +166,10 @@ export class DocentesRepository {
   async update(id: string, institucion_id: string, dto: UpdateDocenteDto): Promise<LegajoDocente> {
     const fields: (keyof UpdateDocenteDto)[] = [
       'usuario_id', 'nombre', 'apellido', 'dni', 'email', 'telefono',
+      'fecha_nacimiento', 'genero', 'nacionalidad',
+      'domicilio_calle', 'domicilio_numero', 'domicilio_piso',
+      'domicilio_torre', 'domicilio_depto',
+      'localidad', 'provincia', 'codigo_postal',
       'titulo', 'fecha_ingreso', 'estado', 'observaciones',
     ];
     const sets: string[] = [];

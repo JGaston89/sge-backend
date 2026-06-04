@@ -105,6 +105,10 @@ docker compose down
 
 ## Solución de problemas
 
+**El backend no toma los cambios de código (errores de columna inexistente, rutas 404)**
+→ `nest start --watch` a veces no detecta cambios de archivo desde Windows via Docker volume.
+→ Solución: reiniciá el container `sge_api` desde Docker Desktop o con `docker restart sge_api`.
+
 **El backend no arranca — "Redis: reconnect limit"**
 → Docker Desktop no está corriendo. Abrilo y repetí el Paso 1.
 
@@ -119,3 +123,28 @@ docker compose down
 ```powershell
 Get-NetTCPConnection -LocalPort 3000 | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }
 ```
+
+
+
+Buscar logs de token para validar correo:
+
+SOLUCIÓN SIMPLE
+
+Probá este comando: (intentar siempre con este comando)
+
+docker logs sge_api --tail 50
+
+Usá:
+
+docker logs sge_api --tail 100 | findstr "http://localhost"
+
+👉 Eso buscará directamente la URL.
+
+🟢 Si estás en PowerShell moderno
+
+También podés usar:
+
+docker logs sge_api 2>&1 | Select-String "http://localhost"
+
+
+Nota para el futuro: cada vez que edites código del backend, si el container no lo detecta automáticamente, usá docker restart sge_api desde Docker Desktop para forzar la recompilación.

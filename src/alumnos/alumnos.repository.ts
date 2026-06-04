@@ -7,13 +7,6 @@ import { UpdateAlumnoDto } from './dto/update-alumno.dto';
 
 // ─── Interfaces ──────────────────────────────────────────────
 
-export interface ContactoEmergencia {
-  nombre: string;
-  relacion: 'padre' | 'madre' | 'tutor' | 'otro';
-  telefono?: string;
-  email?: string;
-}
-
 export interface Alumno {
   id: string;
   institucion_id: string;
@@ -26,8 +19,14 @@ export interface Alumno {
   nacionalidad: string | null;
   email: string | null;
   telefono: string | null;
-  domicilio: string | null;
-  contactos: ContactoEmergencia[];
+  domicilio_calle: string | null;
+  domicilio_numero: string | null;
+  domicilio_piso: string | null;
+  domicilio_torre: string | null;
+  domicilio_depto: string | null;
+  localidad: string | null;
+  provincia: string | null;
+  codigo_postal: string | null;
   estado: 'activo' | 'baja' | 'egresado';
   fecha_baja: Date | null;
   motivo_baja: string | null;
@@ -99,9 +98,11 @@ export class AlumnosRepository {
     const { rows } = await this.pool.query<Alumno>(
       `INSERT INTO alumnos
          (institucion_id, numero_legajo, dni, nombre, apellido,
-          fecha_nacimiento, genero, nacionalidad,
-          email, telefono, domicilio, contactos)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+          fecha_nacimiento, genero, nacionalidad, email, telefono,
+          domicilio_calle, domicilio_numero, domicilio_piso,
+          domicilio_torre, domicilio_depto,
+          localidad, provincia, codigo_postal)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
        RETURNING *`,
       [
         institucionId,
@@ -114,8 +115,14 @@ export class AlumnosRepository {
         dto.nacionalidad ?? null,
         dto.email ?? null,
         dto.telefono ?? null,
-        dto.domicilio ?? null,
-        JSON.stringify(dto.contactos ?? []),
+        dto.domicilio_calle  ?? null,
+        dto.domicilio_numero ?? null,
+        dto.domicilio_piso   ?? null,
+        dto.domicilio_torre  ?? null,
+        dto.domicilio_depto  ?? null,
+        dto.localidad        ?? null,
+        dto.provincia        ?? null,
+        dto.codigo_postal    ?? null,
       ],
     );
     return rows[0];
@@ -261,8 +268,14 @@ export class AlumnosRepository {
     if (dto.nacionalidad    !== undefined) set('nacionalidad',     dto.nacionalidad ?? null);
     if (dto.email           !== undefined) set('email',            dto.email ?? null);
     if (dto.telefono        !== undefined) set('telefono',         dto.telefono ?? null);
-    if (dto.domicilio       !== undefined) set('domicilio',        dto.domicilio ?? null);
-    if (dto.contactos       !== undefined) set('contactos',        JSON.stringify(dto.contactos));
+    if (dto.domicilio_calle   !== undefined) set('domicilio_calle',   dto.domicilio_calle  ?? null);
+    if (dto.domicilio_numero  !== undefined) set('domicilio_numero',  dto.domicilio_numero ?? null);
+    if (dto.domicilio_piso    !== undefined) set('domicilio_piso',    dto.domicilio_piso   ?? null);
+    if (dto.domicilio_torre   !== undefined) set('domicilio_torre',   dto.domicilio_torre  ?? null);
+    if (dto.domicilio_depto   !== undefined) set('domicilio_depto',   dto.domicilio_depto  ?? null);
+    if (dto.localidad         !== undefined) set('localidad',         dto.localidad        ?? null);
+    if (dto.provincia         !== undefined) set('provincia',         dto.provincia        ?? null);
+    if (dto.codigo_postal     !== undefined) set('codigo_postal',     dto.codigo_postal    ?? null);
 
     if (fields.length === 0) {
       return (await this.findById(id, institucionId)) as Alumno;
